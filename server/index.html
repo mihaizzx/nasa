@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8"/>
+  <title>Space Debris NASA Demo - 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://cdn.jsdelivr.net/npm/cesium@1.122/Build/Cesium/Widgets/widgets.css" rel="stylesheet"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      color: white;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      height: 100vh;
+      background: linear-gr      <button id="btnRisk" class="btn" data-action="calculateRisk">
+        <span class="btn-icon">⚠️</span>
+        Risk Analysis
+      </button>
+      <div id="riskResult" class="result-display" style="display: none;"></div>
+
+      <!-- Image Classification -->
+      <input id="imageInput" type="file" accept="image/*" class="input-styled"/>
+      <button id="btnDetect" class="btn" data-action="classifyImage">
+        <span class="btn-icon">🔍</span>
+        Classify Image
+      </button>
+      <div id="detectResult" class="result-display" style="display: none;"></div>
+
+      <!-- Utility Buttons -->
+      <button id="btnRefresh" class="btn" data-action="refreshObjects">
+        <span class="btn-icon">🔄</span>
+        Refresh
+      </button>F50, #45a049);
+      box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      position: relative;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      transform: translateX(-280px);
+      box-shadow: none;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      min-height: 80px;
+      text-align: center;
+      background: rgba(0,0,0,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      transition: opacity 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .sidebar.collapsed .sidebar-header {
+      opacity: 0;
+    }
+
+    .sidebar-header h1 {
+      font-size: 16px;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+
+    .sidebar-header p {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .help-button {
+      margin: 15px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      border: none;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .help-button:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 10px;
+      transition: opacity 0.3s ease;
+      max-height: calc(100vh - 120px);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+
+    .sidebar-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar-content::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 3px;
+    }
+
+    .sidebar-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.5);
+    }
+
+    .sidebar.collapsed .sidebar-content {
+      opacity: 0;
+    }
+
+    .section {
+      margin-bottom: 15px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      opacity: 0.6;
+      padding-left: 5px;
+      font-weight: 500;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.12);
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: left;
+      font-weight: 400;
+    }
+
+    .btn:hover {
+      background: rgba(255,255,255,0.2);
+      transform: translateX(3px);
+    }
+
+    .btn:active {
+      transform: translateX(3px) scale(0.98);
+    }
+
+    .btn-primary {
+      background: rgba(255,255,255,0.2);
+      font-weight: 500;
+    }
+
+    .btn-secondary {
+      background: rgba(100,149,237,0.2);
+      color: #87CEEB;
+    }
+
+    .btn-warning {
+      background: rgba(255,140,0,0.2);
+      color: #FFB347;
+    }
+
+    .btn-warning:hover {
+      background: rgba(255,140,0,0.3);
+    }
+
+    .btn-icon {
+      margin-right: 8px;
+      font-size: 14px;
+      min-width: 16px;
+    }
+
+    .select-styled {
+      width: 100%;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      font-size: 11px;
+      max-height: 100px;
+    }
+
+    .input-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .input-styled {
+      padding: 6px 8px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      font-size: 11px;
+    }
+
+    .main-content {
+      flex: 1;
+      position: relative;
+      background: #000;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar.collapsed ~ .main-content {
+      margin-left: 0;
+    }
+
+    .toggle-sidebar {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 1001;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(76, 175, 80, 0.9);
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .toggle-sidebar:hover {
+      background: rgba(76, 175, 80, 1);
+      transform: scale(1.1);
+    }
+
+    .sidebar.collapsed + .main-content .toggle-sidebar {
+      left: 15px;
+    }
+
+    #cesiumContainer {
+      width: 100%;
+      height: 100vh;
+    }
+
+    .status-panel {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      background: rgba(0,0,0,0.7);
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 300px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 10px;
+      line-height: 1.3;
+      border: 1px solid rgba(76, 175, 80, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .result-display {
+      background: rgba(255,255,255,0.08);
+      padding: 6px;
+      margin-top: 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      white-space: pre-line;
+      line-height: 1.2;
+    }
+
+    .welcome-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      transition: opacity 0.5s ease;
+    }
+
+    .welcome-card {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 400px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    }
+
+    .welcome-card h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .welcome-card p {
+      margin-bottom: 8px;
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .welcome-card ul {
+      text-align: left;
+      margin: 12px 0;
+      padding-left: 18px;
+      font-size: 13px;
+    }
+
+    .close-welcome {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 16px;
+      color: white;
+      cursor: pointer;
+      margin-top: 12px;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .close-welcome:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .hide-welcome { 
+      opacity: 0; 
+      pointer-events: none; 
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        height: 100vh;
+        transform: translateX(-240px);
+      }
+      
+      .sidebar.open {
+        transform: translateX(0);
+      }
+    }
+
+    /* Advanced Animations & Interactive Effects */
+    @keyframes orbitalGlow {
+      0% { box-shadow: 0 0 5px rgba(100, 149, 237, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(100, 149, 237, 0.8), 0 0 30px rgba(100, 149, 237, 0.4); }
+      100% { box-shadow: 0 0 5px rgba(100, 149, 237, 0.5); }
+    }
+
+    @keyframes pulseData {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes slideInLeft {
+      from { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      70% { transform: scale(0.9); opacity: 0.9; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -468px 0; }
+      100% { background-position: 468px 0; }
+    }
+
+    @keyframes floatingIcon {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* Enhanced Button Animations */
+    .btn {
+      position: relative;
+      overflow: hidden;
+      animation: slideInLeft 0.6s ease-out;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:hover {
+      transform: scale(1.05) translateX(2px);
+      animation: orbitalGlow 2s infinite;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .btn.btn-primary:hover {
+      background: linear-gradient(135deg, #6495ED, #4169E1);
+      transform: scale(1.08);
+      animation: orbitalGlow 2s infinite, pulseData 1.5s infinite;
+      box-shadow: 0 6px 20px rgba(100, 149, 237, 0.4);
+    }
+
+    .btn-icon {
+      display: inline-block;
+      animation: floatingIcon 2s ease-in-out infinite;
+      transition: transform 0.3s ease;
+    }
+
+    .btn:hover .btn-icon {
+      animation: floatingIcon 1s ease-in-out infinite;
+      transform: scale(1.2);
+    }
+
+    /* Loading State Animation */
+    .btn.loading::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+      );
+      animation: shimmer 1.5s infinite;
+    }
+
+    /* Results Container Animation */
+    .result-container {
+      animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    /* Sidebar Content Animation */
+    .sidebar-content {
+      animation: slideInLeft 0.8s ease-out 0.2s both;
+    }
+
+    /* Special NASA Data Button Glow */
+    #btnSimulateDebris {
+      background: linear-gradient(135deg, #6495ED, #4682B4);
+      position: relative;
+    }
+
+    #btnSimulateDebris:hover {
+      background: linear-gradient(135deg, #4169E1, #1E90FF);
+      transform: scale(1.1);
+      animation: orbitalGlow 2s infinite, pulseData 1.5s infinite;
+      box-shadow: 
+        0 0 10px rgba(100, 149, 237, 0.6),
+        0 0 20px rgba(100, 149, 237, 0.4),
+        0 0 30px rgba(100, 149, 237, 0.2),
+        0 8px 25px rgba(100, 149, 237, 0.3);
+    }
+
+    /* LEO Toggle Special Effects */
+    #btnToggleLEO {
+      background: linear-gradient(135deg, #20B2AA, #008B8B);
+    }
+
+    #btnToggleLEO:hover {
+      background: linear-gradient(135deg, #00CED1, #20B2AA);
+      transform: scale(1.06);
+      animation: orbitalGlow 2s infinite;
+      box-shadow: 
+        0 0 10px rgba(32, 178, 170, 0.6),
+        0 0 20px rgba(32, 178, 170, 0.4),
+        0 6px 20px rgba(32, 178, 170, 0.3);
+    }
+
+    /* Clear Buttons with Warning Effect */
+    #btnClearDebris:hover,
+    #btnClearAllSatellites:hover,
+    #btnClearAllDebris:hover {
+      background: linear-gradient(135deg, #FF6347, #DC143C);
+      transform: scale(1.05);
+      animation: pulseData 1s infinite;
+      box-shadow: 
+        0 0 10px rgba(255, 99, 71, 0.6),
+        0 0 20px rgba(255, 99, 71, 0.4),
+        0 5px 15px rgba(255, 99, 71, 0.3);
+    }
+
+    /* Impact Prediction Button */
+    #btnPredictImpact {
+      background: linear-gradient(135deg, #FFA500, #FF8C00);
+    }
+
+    #btnPredictImpact:hover {
+      background: linear-gradient(135deg, #FF8C00, #FF6347);
+      transform: scale(1.08);
+      animation: orbitalGlow 2s infinite, pulseData 1.5s infinite;
+      box-shadow: 
+        0 0 10px rgba(255, 165, 0, 0.6),
+        0 0 20px rgba(255, 165, 0, 0.4),
+        0 6px 20px rgba(255, 165, 0, 0.3);
+    }
+
+    /* Responsive Animation Adjustments */
+    @media (max-width: 768px) {
+      .btn {
+        animation-duration: 0.4s;
+      }
+      
+      .btn:hover {
+        transform: none;
+        animation: pulseData 1s infinite;
+      }
+    }
+
+    /* Reduced Motion for Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <!-- Welcome Overlay -->
+  <div id="welcome" class="welcome-overlay">
+    <div class="welcome-card">
+      <h2>🛰️ Space Debris NASA Demo</h2>
+      <p><strong>Centru de Control Spațial</strong></p>
+      <p>Beginners - Quick Start:</p>
+      <ul>
+        <li>1. Press <strong>"Load TLE Data"</strong></li>
+        <li>2. Select <strong>ISS</strong></li>
+        <li>3. Press <strong>"Add to Scene"</strong></li>
+        <li>4. Press <strong>"Simulate Debris"</strong></li>
+      </ul>
+      <p>For complete guide → <strong>"📖 Guide"</strong></p>
+      <button class="close-welcome" onclick="document.getElementById('welcome').classList.add('hide-welcome')">
+        ✖ Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <h1>Space Debris Monitor</h1>
+      <p>NASA Demo - 3D Analysis</p>
+    </div>
+
+    <a href="/static/help_updated.html" class="help-button" title="Help & Guide">
+      📖 Guide
+    </a>
+
+    <div class="sidebar-content">
+      <!-- TLE Loading -->
+      <button id="btnLoadCelestrak" class="btn btn-primary" data-action="loadCelestrak">
+        <span class="btn-icon">🌐</span>
+        Load TLE Data
+      </button>
+      
+      <!-- TLE Categories -->
+      <div class="section-divider"></div>
+      <button id="btnLoadActiveData" class="btn btn-success" data-action="loadActiveData">
+        <span class="btn-icon">🛰️</span>
+        Active Satellites
+      </button>
+      
+      <button id="btnLoadWeatherData" class="btn btn-info" data-action="loadWeatherData">
+        <span class="btn-icon">🌦️</span>
+        Weather Satellites
+      </button>
+      
+      <button id="btnLoadScienceData" class="btn btn-secondary" data-action="loadScienceData">
+        <span class="btn-icon">🔬</span>
+        Science Satellites
+      </button>
+      
+      <button id="btnLoadCommunicationData" class="btn btn-warning" data-action="loadCommunicationData">
+        <span class="btn-icon">📡</span>
+        Communication Satellites
+      </button>
+      
+      <button id="btnLoadNavigationData" class="btn btn-primary" data-action="loadNavigationData">
+        <span class="btn-icon">🧭</span>
+        Navigation (GPS)
+      </button>
+      
+      <!-- Objects -->
+      <select id="objectSelect" class="select-styled" size="5" data-change-action="objectSelectionChanged">
+        <!-- Objects will be populated here -->
+      </select>
+      
+      <!-- Orbit Controls -->
+      <div class="input-group">
+        <input id="minutes" class="input-styled" type="number" value="120" min="1" max="1440" placeholder="min">
+        <input id="step" class="input-styled" type="number" value="60" min="5" max="3600" placeholder="step">
+      </div>
+      
+      <button id="btnAddToScene" class="btn btn-primary">
+        <span class="btn-icon">🛰️</span>
+        Add to Scene
+      </button>
+
+      <!-- Debris Simulation -->
+      <button id="btnSimulateDebris" class="btn btn-primary">
+        <span class="btn-icon">�️</span>
+        Date Reale NASA Debris
+      </button>
+      
+      <button id="btnClearDebris" class="btn btn-secondary">
+        <span class="btn-icon">🧹</span>
+        Clear All
+      </button>
+      
+      <button id="btnPredictImpact" class="btn btn-warning">
+        <span class="btn-icon">💥</span>
+        Predict Impact
+      </button>
+      
+      <button id="btnClearAllDebris" class="btn btn-danger">
+        <span class="btn-icon">🗑️</span>
+        Clear All Debris
+      </button>
+      
+      <button id="btnShowNASARiskZones" class="btn btn-info">
+        <span class="btn-icon">🚨</span>
+        NASA Risk Zones
+      </button>
+      
+      <div id="debrisResult" class="result-display" style="display: none;"></div>
+
+      <!-- All Satellites Visualization -->
+      <div class="section-divider"></div>
+      <button id="btnShowAllSatellites" class="btn btn-secondary" data-action="showAllSatellites">
+        <span class="btn-icon">🌐</span>
+        Show All Satellites
+      </button>
+      
+      <button id="btnShowLEOSatellites" class="btn btn-primary" data-action="showLEOSatellites">
+        <span class="btn-icon">🌍</span>
+        Show LEO Satellites
+      </button>
+      
+      <button id="btnShowNonLEOSatellites" class="btn btn-info" data-action="showNonLEOSatellites">
+        <span class="btn-icon">🌌</span>
+        Show Non-LEO Satellites
+      </button>
+      
+      <button id="btnToggleLEO" class="btn btn-secondary" data-action="toggleLEO">
+        <span class="btn-icon">🔴</span>
+        Toggle LEO Boundary
+      </button>
+      
+      <button id="btnClearAllSatellites" class="btn btn-warning" data-action="clearAllSatellites">
+        <span class="btn-icon">🧹</span>
+        Clear Extra Satellites
+      </button>
+      
+      <div id="leoResult" class="result-display" style="display: none;"></div>
+      <div id="satellitesResult" class="result-display" style="display: none;"></div>
+
+      <!-- Space Weather -->
+      <button id="btnDonki" class="btn" data-action="fetchDonki">
+        <span class="btn-icon">☀️</span>
+        Space Weather
+      </button>
+      <div id="donkiResult" class="result-display" style="display: none;"></div>
+
+      <!-- Risk Analysis -->
+      <div class="input-group">
+        <input id="area" class="input-styled" type="number" value="10" min="0.01" step="0.1" placeholder="Area m²">
+        <input id="days" class="input-styled" type="number" value="365" min="1" step="1" placeholder="Days">
+      </div>
+      <div class="input-group">
+        <input id="sizeMin" class="input-styled" type="number" value="1" min="0.01" step="0.01" placeholder="Min cm">
+        <input id="sizeMax" class="input-styled" type="number" value="10" min="0.01" step="0.01" placeholder="Max cm">
+      </div>
+      <button id="btnRisk" class="btn">
+        <span class="btn-icon">⚠️</span>
+        Risk Analysis
+      </button>
+      <div id="riskResult" class="result-display" style="display: none;"></div>
+
+      <!-- Image Classification -->
+      <input id="imageInput" type="file" accept="image/*" class="input-styled"/>
+      <button id="btnDetect" class="btn">
+        <span class="btn-icon">🔍</span>
+        Classify Image
+      </button>
+      <div id="detectResult" class="result-display" style="display: none;"></div>
+
+      <!-- Utility Buttons -->
+      <button id="btnRefresh" class="btn">
+        <span class="btn-icon">�</span>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <button id="toggleSidebar" class="toggle-sidebar" data-action="toggleSidebar">☰</button>
+    
+    <div id="cesiumContainer"></div>
+    
+    <!-- Status Panel -->
+    <div class="status-panel">
+      <div style="font-weight: bold; margin-bottom: 6px;">📡 System Log</div>
+      <div id="log"></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.122/Build/Cesium/Cesium.js"></script>
+<script>
+  window.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@1.122/Build/Cesium/';
+</script>
+<!-- Load configuration first -->
+<script src="/static/config.js"></script>
+<!-- Load modular JavaScript files -->
+<script src="/static/js/constants.js"></script>
+<script src="/static/js/dom-cache.js"></script>
+<script src="/static/js/error-handler.js"></script>
+<script src="/static/js/orbital-calculator.js"></script>
+<script src="/static/js/api-manager.js"></script>
+<script src="/static/js/event-manager.js"></script>
+<script src="/static/app-new.js"></script>
+</body>
+</html>
