@@ -86,18 +86,16 @@ class APIManager {
   }
 
   async getTLEObjects() {
-    return this.request('/api/tle/objects', {}, 'Fetching TLE objects');
+    return this.request('/api/objects', {}, 'Fetching TLE objects');
   }
 
   async propagateOrbit(noradId, minutes, step) {
-    return this.request('/api/propagate', {
-      method: 'POST',
-      body: JSON.stringify({
-        norad_id: parseInt(noradId),
-        minutes: parseFloat(minutes),
-        step: parseFloat(step)
-      })
-    }, `Propagating orbit for ${noradId}`);
+    const params = new URLSearchParams({
+      norad_id: parseInt(noradId),
+      minutes: parseFloat(minutes),
+      step_s: parseFloat(step)
+    });
+    return this.request(`/api/propagate?${params.toString()}`, {}, `Propagating orbit for ${noradId}`);
   }
 
   // Satellite Operations
@@ -127,7 +125,7 @@ class APIManager {
 
   // Image Classification
   async classifyImage(formData) {
-    return this.request('/api/classify', {
+    return this.request('/api/detect', {
       method: 'POST',
       body: formData,
       headers: {} // Let browser set content-type for FormData
